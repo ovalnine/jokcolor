@@ -22,7 +22,6 @@
 // Source: https://bottosson.github.io/posts/colorpicker/
 // NOTE: This file was modified from the original source
 
-
 #include <math.h>
 #include <float.h>
 
@@ -30,6 +29,7 @@ typedef struct Lab { float L; float a; float b; } Lab;
 typedef struct RGB { float r; float g; float b; } RGB;
 typedef struct HSV { float h; float s; float v; } HSV;
 typedef struct HSL { float h; float s; float l; } HSL;
+typedef struct LCh { float L; float C; float h; } LCh;
 typedef struct LC { float L; float C; } LC;
 
 // Alternative representation of (L_cusp, C_cusp)
@@ -688,6 +688,43 @@ HSV srgb_to_okhsv(RGB rgb)
 	float s = (S_0 + T_max) * C_v / ((T_max * S_0) + T_max * k * C_v);
 
 	return (HSV){ h, s, v };
+}
+
+Lab srgb_to_oklab(RGB c) {
+  RGB rgb = (RGB){
+    srgb_transfer_function_inv(rgb.r),
+    srgb_transfer_function_inv(rgb.g),
+    srgb_transfer_function_inv(rgb.b),
+  };
+  return linear_srgb_to_oklab(rgb);
+}
+
+RGB oklab_to_srgb(Lab c) {
+	RGB rgb = oklab_to_linear_srgb(c);
+	return (RGB){
+		srgb_transfer_function(rgb.r),
+		srgb_transfer_function(rgb.g),
+    srgb_transfer_function(rgb.b),
+	};
+}
+
+LCh srgb_to_oklch(RGB c) {
+  Lab lab = srgb_to_oklab(c);
+
+  float L = lab.L;
+  float C = sqrtf(lab.a * lab.a + lab.b * lab.b);
+  float h = atan2f(-lab.b, -lab.a);
+
+  return (LCh) {L, C, h};
+}
+
+RGB oklch_to_srgb(LCh c) {
+  Lab lab = (Lab){
+    c.L,
+    c.C * cosf(c.h),
+    c.C * sinf(c.h),
+  };
+  return oklab_to_srgb(lab);
 }
 
 #endif // OK_COLOR_IMPLEMENTATION

@@ -73,6 +73,46 @@ static HSV jokcolor_gethsv(const Janet *argv, int32_t n) {
   }
 }
 
+static LCh jokcolor_getlch(const Janet *argv, int32_t n) {
+  Janet x = argv[n];
+  const Janet *els = NULL;
+  int32_t len = 0;
+  if (janet_indexed_view(x, &els, &len)) {
+    if (len == 3) {
+      JanetView idx = janet_getindexed(argv, n);
+      return (LCh) {
+        idx_getfloat(idx, 0),
+        idx_getfloat(idx, 1),
+        idx_getfloat(idx, 2),
+      };
+    } else {
+      janet_panicf("expected 3 color components, got %d", len);
+    }
+  } else {
+    janet_panic("expected vec to be an indexed type");
+  }
+}
+
+static Lab jokcolor_getlab(const Janet *argv, int32_t n) {
+  Janet x = argv[n];
+  const Janet *els = NULL;
+  int32_t len = 0;
+  if (janet_indexed_view(x, &els, &len)) {
+    if (len == 3) {
+      JanetView idx = janet_getindexed(argv, n);
+      return (Lab) {
+        idx_getfloat(idx, 0),
+        idx_getfloat(idx, 1),
+        idx_getfloat(idx, 2),
+      };
+    } else {
+      janet_panicf("expected 3 color components, got %d", len);
+    }
+  } else {
+    janet_panic("expected vec to be an indexed type");
+  }
+}
+
 static Janet cfun_okhsl_to_srgb(int32_t argc, Janet *argv) {
   janet_fixarity(argc, 1);
   HSL hsl = jokcolor_gethsl(argv, 0);
@@ -121,6 +161,54 @@ static Janet cfun_srgb_to_okhsv(int32_t argc, Janet *argv) {
   return janet_wrap_array(array);
 }
 
+static Janet cfun_oklab_to_srgb(int32_t argc, Janet *argv) {
+  janet_fixarity(argc, 1);
+  Lab lab = jokcolor_getlab(argv, 0);
+  RGB rgb = oklab_to_srgb(lab);
+  JanetArray *array = janet_array(3);
+  array->count = 3;
+  array->data[0] = janet_wrap_number(rgb.r);
+  array->data[1] = janet_wrap_number(rgb.g);
+  array->data[2] = janet_wrap_number(rgb.b);
+  return janet_wrap_array(array);
+}
+
+static Janet cfun_srgb_to_oklab(int32_t argc, Janet *argv) {
+  janet_fixarity(argc, 1);
+  RGB rgb = jokcolor_getrgb(argv, 0);
+  Lab lab = srgb_to_oklab(rgb);
+  JanetArray *array = janet_array(3);
+  array->count = 3;
+  array->data[0] = janet_wrap_number(lab.L);
+  array->data[1] = janet_wrap_number(lab.a);
+  array->data[2] = janet_wrap_number(lab.b);
+  return janet_wrap_array(array);
+}
+
+static Janet cfun_oklch_to_srgb(int32_t argc, Janet *argv) {
+  janet_fixarity(argc, 1);
+  LCh lch = jokcolor_getlch(argv, 0);
+  RGB rgb = oklch_to_srgb(lch);
+  JanetArray *array = janet_array(3);
+  array->count = 3;
+  array->data[0] = janet_wrap_number(rgb.r);
+  array->data[1] = janet_wrap_number(rgb.g);
+  array->data[2] = janet_wrap_number(rgb.b);
+  return janet_wrap_array(array);
+}
+
+static Janet cfun_srgb_to_oklch(int32_t argc, Janet *argv) {
+  janet_fixarity(argc, 1);
+  RGB rgb = jokcolor_getrgb(argv, 0);
+  LCh lch = srgb_to_oklch(rgb);
+  JanetArray *array = janet_array(3);
+  array->count = 3;
+  array->data[0] = janet_wrap_number(lch.L);
+  array->data[1] = janet_wrap_number(lch.C);
+  array->data[2] = janet_wrap_number(lch.h);
+  return janet_wrap_array(array);
+}
+
 static JanetReg core_cfuns[] = {
   {"okhsl-to-srgb", cfun_okhsl_to_srgb,
     "(okhsl-to-srgb okhsl)\n\n"
@@ -137,7 +225,23 @@ static JanetReg core_cfuns[] = {
   {"srgb-to-okhsv", cfun_srgb_to_okhsv,
     "(srgb-to-okhsv srgb)\n\n"
     "Convert sRGB to OkHSV"
-  }
+  },
+  {"oklab-to-srgb", cfun_oklab_to_srgb,
+    "(oklab-to-srgb oklab)\n\n"
+    "Convert OkLab to sRGB"
+  },
+  {"srgb-to-oklab", cfun_srgb_to_oklab,
+    "(srgb-to-oklab srgb)\n\n"
+    "Convert sRGB to OkLab"
+  },
+  {"oklch-to-srgb", cfun_oklch_to_srgb,
+    "(oklch-to-srgb oklch)\n\n"
+    "Convert OkLCh to sRGB"
+  },
+  {"srgb-to-oklch", cfun_srgb_to_oklch,
+    "(srgb-to-oklch srgb)\n\n"
+    "Convert sRGB to OkLCh"
+  },
 };
 
 JANET_MODULE_ENTRY(JanetTable *env) {
